@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus-deployment
+  namespace: default
+  labels:
+    srilabmonitoring: prometheus-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      srilabmonitoring: prometheus-server
+  template:
+    metadata:
+      labels:
+        srilabmonitoring: prometheus-server
+    spec:
+#      serviceAccountName: prometheus-sri-sa
+      serviceAccountName: default
+      securityContext:
+            fsGroup: 0 
+            runAsUser: 0
+            runAsGroup: 0
+            fsGroupChangePolicy: "OnRootMismatch"
+      containers:
+        - name: prometheus-container
+          image: prom/prometheus
+          imagePullPolicy: IfNotPresent
+          args:
+            - "--config.file=/etc/prometheus/prometheus.yml"
+            - "--storage.tsdb.path=/prometheus/"
+          ports:
+            - containerPort: 9090
+          volumeMounts:
+            - name: prometheus-config-volume
+              mountPath: /etc/prometheus/
+            - name: prometheus-storage-volume
+              mountPath: /prometheus/
+      volumes:
+        - name: prometheus-config-volume
+          configMap:
+            defaultMode: 420
+            name: prom-cm
+  
+        - name: prometheus-storage-volume
+#          emptyDir: {}
+          persistentVolumeClaim:
+              claimName: prompvc
